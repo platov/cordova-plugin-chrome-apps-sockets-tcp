@@ -65,6 +65,9 @@ exports.connect = function(socketId, peerAddress, peerPort, callback) {
         callback(0);
     };
     var fail = callback && function(error) {
+      if(!(message in error && resultCode in error))
+        callbackWithError(error, callback, -1);
+      else
         callbackWithError(error.message, callback, error.resultCode);
     };
     exec(win, fail, 'ChromeSocketsTcp', 'connect', [socketId, peerAddress, peerPort]);
@@ -148,18 +151,20 @@ exports.onReceiveError = new Event('onReceiveError');
 function registerReceiveEvents() {
 
     var win = function(info, data) {
+        var args = [];
         if (data) { // Binary data has to be a top level argument.
             info.data = data;
         }
         exports.onReceive.fire(info);
 
-        if (data) { // Only exec readyToRead when not redirect to file
+        //if (data) { // Only exec readyToRead when not redirect to file
 
             // readyToRead signals the plugin to read the next tcp packet. exec
             // it after fire() will allow all API calls in the onReceive
             // listener exec before next read, such as, pause the socket.
-            exec(null, null, 'ChromeSocketsTcp', 'readyToRead', []);
-        }
+        if ('socketId' in data) args = [data.socketId];
+        exec(null, null, 'ChromeSocketsTcp', 'readyToRead', args);
+        //}
     };
 
     // TODO: speical callback for android, DELETE when multipart result for
