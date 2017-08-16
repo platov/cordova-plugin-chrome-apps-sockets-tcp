@@ -168,15 +168,11 @@ function registerReceiveEvents() {
     };
 
     if (platform.id == 'android') {
-        win = (function() {
-            var recvInfo;
-            return function(info) {
-                if ('socketId' in info) recvInfo = info;
-                else recvInfo.data = info;
-                if('data' in recvInfo)
-                  exports.onReceive.fire(recvInfo);
-            };
-        })();
+        win = function(result) {
+            result.data = base64ToArrayBuffer(result.data);
+            exports.onReceive.fire(result);
+            exec(null, null, 'ChromeSocketsTcp', 'readyToRead', [result.socketId]);
+        };
     }
 
     var fail = function(info) {
@@ -187,6 +183,16 @@ function registerReceiveEvents() {
     };
 
     exec(win, fail, 'ChromeSocketsTcp', 'registerReceiveEvents', []);
+}
+
+function base64ToArrayBuffer(base64) {
+    var binary_string =  window.atob(base64);
+    var len = binary_string.length;
+    var bytes = new Uint8Array( len );
+    for (var i = 0; i < len; i++)        {
+        bytes[i] = binary_string.charCodeAt(i);
+    }
+    return bytes.buffer;
 }
 
 require('cordova-plugin-chrome-apps-common.helpers').runAtStartUp(registerReceiveEvents);
